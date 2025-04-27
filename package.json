@@ -19,7 +19,7 @@
     "marked": "^4.2.3",
     "moment": "^2.29.4",
     "plyr": "^3.7.3",
-    "sanitize-html": "^2.7.3",
+    "sanitize-html": "^2.12.1",
     "url-join": "^5.0.0",
     "vue": "^3.2.33"
   },
