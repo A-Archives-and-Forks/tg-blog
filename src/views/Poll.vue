@@ -10,13 +10,16 @@
             <div class="bar" :style="{width: percent(o)}"></div>
         </div>
 
-        <div class="tail">Final Results - {{f.total_voter_count}} Responses</div>
+        <div class="tail">{{msg.pollResults(f.total_voter_count)}}</div>
     </div>
 </template>
 
 <script lang="ts" setup>
 import {PollOption, TGPollFile} from "@/logic";
+import {useTgbMessages} from "@/logic/messages";
 import {computed} from "vue";
+
+const msg = useTgbMessages()
 
 const props = defineProps<{
     f: TGPollFile
@@ -33,9 +36,9 @@ function percent(o: PollOption)
 
 const subtitle = computed(() =>
 {
-    let txt = f.value.type == 'REGULAR' ? 'Poll' : 'Quiz'
+    let txt = f.value.type == 'REGULAR' ? msg.poll : msg.quiz
     if (f.value.is_anonymous)
-        txt = 'Anonymous ' + txt
+        txt = msg.anonymousPrefix + txt
     return txt
 })
 </script>

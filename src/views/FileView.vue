@@ -55,7 +55,10 @@
 <script lang="ts" setup>
 import {TGFile, TGLocationFile, TGPollFile} from "@/logic/models";
 import {durationFmt, sizeFmt} from "@/logic/formatter";
+import {useTgbMessages} from "@/logic/messages";
 import {computed, defineAsyncComponent, ref} from "vue";
+
+const msg = useTgbMessages()
 
 function downloadURI(uri: string, name: string) {
   let link = document.createElement("a");
@@ -121,7 +124,7 @@ const fileTitle = computed((): string | undefined =>
         return file.original_name ?? file.url.split("/").slice(-1)[0]
 
     if (file.media_type == 'voice_message')
-        return "Voice Message"
+        return msg.voiceMessage
 
     if (file.media_type == "audio_file")
     {

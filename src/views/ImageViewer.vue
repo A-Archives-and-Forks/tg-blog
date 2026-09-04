@@ -9,7 +9,7 @@
         </div>
         <div class="bottom">
             <div class="left unselectable">
-                <div class="index">Photo {{index + 1}} of {{imgs.length}}</div>
+                <div class="index">{{msg.photoIndex(index + 1, imgs.length)}}</div>
                 <div class="detail">
                     <span class="date" v-if="img.date">{{img.date}}</span>
                 </div>
@@ -33,7 +33,10 @@
 <script lang="ts" setup>
 import * as KeyCode from 'keycode-js';
 import fileDownload from "js-file-download";
+import {useTgbMessages} from "@/logic/messages";
 import {computed, onMounted, onUnmounted, ref} from "vue";
+
+const msg = useTgbMessages()
 
 export interface ViewedImage
 {

@@ -3,12 +3,12 @@
         <slot></slot>
 
         <div class="search">
-            <input v-model="search" ref="searchEl" placeholder="Search...">
+            <input v-model="search" ref="searchEl" :placeholder="msg.searchPlaceholder">
             <i-ic-round-search />
         </div>
 
         <div class="error tgb-card" v-if="fail">
-            <h2>Failed loading posts from: <br>{{purl}}</h2>
+            <h2>{{msg.loadFailed}} <br>{{purl}}</h2>
             {{fail}}
         </div>
 
@@ -35,7 +35,8 @@ import {Post, TGFile} from "@/logic/models";
 import PostView from "@/views/PostView.vue";
 import {initSpoilers} from '@/logic/spoilers';
 import ImageViewer, {TrackedImage} from "@/views/ImageViewer.vue";
-import {computed, defineAsyncComponent, nextTick, onBeforeMount, onMounted, onUnmounted, onUpdated, ref, watch} from "vue";
+import {applyTranslations, createMessages, TgBlogMessages, TgBlogTranslations, tgbMessagesKey} from "@/logic/messages";
+import {computed, defineAsyncComponent, nextTick, onBeforeMount, onMounted, onUnmounted, onUpdated, provide, ref, watch} from "vue";
 
 const AudioPlayer = defineAsyncComponent(() => import("./AudioPlayer.vue"))
 
@@ -44,10 +45,18 @@ const props = withDefaults(defineProps<{
     postsUrl: string
     postsData?: Post[]
     margins?: boolean
+    /** UI string overrides; unprovided keys fall back to English defaults */
+    messages?: Partial<TgBlogMessages>
+    /** Per-post content translations keyed by post id; missing ids show the original text */
+    translations?: TgBlogTranslations
 }>(), {
     margins: true
 })
 const margins = computed(() => props.margins)
+
+const msg = createMessages(undefined)
+provide(tgbMessagesKey, msg)
+watch(() => props.messages, (overrides) => Object.assign(msg, createMessages(overrides)), {immediate: true, deep: true})
 
 const searchEl = ref<HTMLInputElement>()
 const purl = computed(() => new URL(props.postsUrl, document.location.href).href)
@@ -365,15 +374,45 @@ function jumpToReply(id: number, index: number)
     window.addEventListener('scroll', scrollHandler);
 }
 
+// Canonical fetched posts, kept immutable so translations can be re-applied on
+// locale change without refetching (switching en→zh must restore original text).
+// Post-processing (date formatting, URL absolutizing) is idempotent because
+// rawPosts keeps the pre-format ISO date and urls are absolutized in place once.
+let rawPosts: Post[] = []
+
+function replacePostUrls(posts: Post[]): void
+{
+    posts.forEach(it =>
+    {
+        it.images?.forEach(img => img.url = replaceUrl(img.url))
+        if (it.reply?.thumb) it.reply.thumb = replaceUrl(it.reply.thumb)
+        it.files?.forEach(f =>
+        {
+            f.url = replaceUrl(f.url)
+            if (f.thumb) f.thumb = replaceUrl(f.thumb)
+        })
+    })
+}
+
+function rebuildPosts(): void
+{
+    const merged = applyTranslations(rawPosts, props.translations)
+    merged.forEach(it => it.date = moment(it.date).format(msg.dateFormat))
+    posts.value = merged
+}
+
+watch(() => props.translations, () => rebuildPosts(), {deep: true})
+
 onBeforeMount(async (): Promise<void> =>
 {
     try
     {
-        if (props.postsData) posts.value = props.postsData
-        else posts.value = await (await fetch(purl.value)).json()
-        posts.value.forEach(it => it.date = moment(it.date).format('YYYY-MM-DD H:mm'))
-        posts.value.reverse()
-        posts.value = posts.value.filter(it => it.type !== 'service')
+        if (props.postsData) rawPosts = props.postsData
+        else rawPosts = await (await fetch(purl.value)).json()
+        rawPosts.reverse()
+        rawPosts = rawPosts.filter(it => it.type !== 'service')
+        replacePostUrls(rawPosts)
+        rebuildPosts()
 
         // Initial window: try ?shared={id}, otherwise top of feed.
         const sharedId = parseSharedId()
@@ -391,18 +430,6 @@ onBeforeMount(async (): Promise<void> =>
             startIdx.value = 0
             endIdx.value = Math.min(PAGE_SIZE, posts.value.length)
         }
-
-        // Replace URLs
-        posts.value.forEach(it =>
-        {
-            it.images?.forEach(img => img.url = replaceUrl(img.url))
-            if (it.reply?.thumb) it.reply.thumb = replaceUrl(it.reply.thumb)
-            it.files?.forEach(f =>
-            {
-                f.url = replaceUrl(f.url)
-                if (f.thumb) f.thumb = replaceUrl(f.thumb)
-            })
-        })
 
         // Index images
         imgList.value = posts.value.flatMap((post, pi) => (post.images ?? []).map(img => {

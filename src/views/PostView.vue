@@ -2,7 +2,7 @@
     <div class="post tgb-card" :id="`message-${p.id}`" :class="{'service': p.type === 'service'}" ref="post">
         <div class="head unselectable">
             <div class="forward" v-if="p.forwarded_from">
-                Forwarded from: <a :href="fwdUrl">{{fwdName}}</a>
+                {{msg.forwardedFrom}} <a :href="fwdUrl">{{fwdName}}</a>
             </div>
         </div>
         <div class="reply undraggable clickable" v-if="p.reply" @click="clickReply">
@@ -10,7 +10,7 @@
                 <img class="thumb" :src="p.reply.thumb" alt="" loading="lazy">
             </div>
             <div class="mtext">
-                <div class="reply-to">Reply to:</div>
+                <div class="reply-to">{{msg.replyTo}}</div>
                 <div class="reply-text" v-html="p.reply.text"></div>
             </div>
         </div>
@@ -46,7 +46,10 @@
 import {Image, Post, TGFile} from "@/logic/models";
 import FileView from "@/views/FileView.vue";
 import {calculateAlbumLayout} from "@/logic/webz/calculateAlbumLayout";
+import {useTgbMessages} from "@/logic/messages";
 import {computed, onMounted, onUnmounted, ref, StyleValue} from "vue";
+
+const msg = useTgbMessages()
 
 const props = defineProps<{
     p: Post
@@ -162,7 +165,7 @@ function clickImg(img: Image, i: number)
 }
 
 const shared = ref(false)
-const shareLabel = computed(() => shared.value ? "Link copied!" : "Copy share link")
+const shareLabel = computed(() => shared.value ? msg.linkCopied : msg.copyShareLink)
 
 function buildShareUrl(): string
 {
