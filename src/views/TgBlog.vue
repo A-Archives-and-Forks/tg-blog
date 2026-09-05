@@ -56,7 +56,8 @@ const margins = computed(() => props.margins)
 
 const msg = createMessages(undefined)
 provide(tgbMessagesKey, msg)
-watch(() => props.messages, (overrides) => Object.assign(msg, createMessages(overrides)), {immediate: true, deep: true})
+// Initialized here, applied via watch registered after rebuildPosts is defined below
+let pendingMessages = props.messages
 
 const searchEl = ref<HTMLInputElement>()
 const purl = computed(() => new URL(props.postsUrl, document.location.href).href)
@@ -396,12 +397,24 @@ function replacePostUrls(posts: Post[]): void
 
 function rebuildPosts(): void
 {
-    const merged = applyTranslations(rawPosts, props.translations)
+    // Copy before formatting so rawPosts always keeps canonical ISO dates —
+    // otherwise a second rebuild would re-parse the previously formatted string.
+    const merged = applyTranslations(rawPosts, props.translations).map(it => ({...it}))
     merged.forEach(it => it.date = moment(it.date).format(msg.dateFormat))
     posts.value = merged
 }
 
 watch(() => props.translations, () => rebuildPosts(), {deep: true})
+
+// Apply initial overrides and react to later ones. Registered after rebuildPosts
+// is defined so the immediate call can't hit the TDZ.
+Object.assign(msg, createMessages(pendingMessages))
+watch(() => props.messages, (overrides, prev) =>
+{
+    Object.assign(msg, createMessages(overrides))
+    // Timestamps are pre-rendered strings; re-format them when the format changes
+    if (rawPosts.length && overrides?.dateFormat !== prev?.dateFormat) rebuildPosts()
+}, {deep: true})
 
 onBeforeMount(async (): Promise<void> =>
 {
