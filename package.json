@@ -7,6 +7,7 @@
     "dev": "vite",
     "serve": "vite",
     "build": "rimraf dist && vue-tsc && vite build && UMD=1 vite build",
+    "prepare": "bun run build",
     "build.demo": "rimraf dist && vue-tsc && BUILD_DEMO=1 vite build",
     "lint": "eslint --fix src"
   },
